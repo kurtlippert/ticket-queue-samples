@@ -18,12 +18,18 @@ export interface InitialAction {
   type: 'INITIAL_TICKETS';
 }
 
+export interface TitlesSearchAction {
+  payload: string;
+  type: 'TITLES_SEARCH';
+}
+
 export type Action =
   | InitialAction
   | PagerActions
   | PageActionFulfilled
+  | TitlesSearchAction
   | { type: 'TOGGLE_TITLES_SEARCH', payload: boolean }
-  | { type: 'TITLES_SEARCH', payload: string };
+  | { type: 'TITLES_SEARCH_FULFILLED', payload: PayloadFulfilled & { searchTitle: string } };
 
 export interface OptionalPagerOptions {
   boundaryPagesRange?: number;
@@ -51,4 +57,9 @@ export const toggleTitlesSearch = (payload: boolean): Action => ({
 export const titleSearch = (payload: string): Action => ({
   payload,
   type: 'TITLES_SEARCH',
+});
+
+export const titleSearchFulfilled = (payload: PayloadFulfilled & { searchTitle: string }): Action => ({
+  payload,
+  type: 'TITLES_SEARCH_FULFILLED',
 });

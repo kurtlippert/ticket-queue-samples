@@ -15,6 +15,8 @@ import {
   Action,
   pageFulfilled,
   InitialAction,
+  TitlesSearchAction,
+  titleSearchFulfilled,
 } from './Actions';
 import { initialTicketQueue, TicketQueue } from './Model';
 import { State } from '../Model';
@@ -47,8 +49,8 @@ const getPageWithKey = (pager: PaginationModel, key: ItemKeys | number) => {
   return value;
 };
 
-const ticketEndpoint = (page: number = 1, getPageCount: boolean = false) =>
-  `https://localhost:3003/tickets?limit=10&page=${page}&getPageCount=${getPageCount}`;
+const ticketEndpoint = (page: number = 1, getPageCount: boolean = false, titleFilter: string = '') =>
+  `https://localhost:3003/tickets?limit=10&page=${page}&getPageCount=${getPageCount}&titleFilter=${titleFilter}`;
 
 export const fetchInitialTicketsEpic:
   Epic<Action, Store<State>, EpicDependencies> =
@@ -197,6 +199,27 @@ export const fetchLastPageTicketsEpic:
         );
       });
 
+export const fetchTicketsWithFilterEpic:
+  Epic<Action, Store<State>, EpicDependencies> =
+  (action$, state, { getPageCount }) =>
+    action$.ofType('TITLES_SEARCH')
+      .mergeMap((action) => {
+        const searchTitle = (action as TitlesSearchAction).payload;
+        return getPageCount(ticketEndpoint(1, true, searchTitle))
+          .map((response) =>
+            titleSearchFulfilled({
+              tickets: response.tickets,
+              paginationModelOptions: {
+                ...(state.getState() as any).ticketQueue.PagerOptions,
+                currentPage: 1,
+                totalPages: response.pageCount,
+              },
+              newPage: 1,
+              searchTitle,
+            }),
+          );
+      });
+
 export const ticketQueue =
   (state: TicketQueue = initialTicketQueue, action: Action): TicketQueue => {
     switch (action.type) {
@@ -217,10 +240,18 @@ export const ticketQueue =
           ...state,
           isSearchingTitles: action.payload,
         };
-      case 'TITLES_SEARCH':
+      case 'TITLES_SEARCH_FULFILLED':
         return {
           ...state,
-          titleSearchText: action.payload,
+          Tickets:
+            action.payload.tickets.map((ticket) => ({
+              ...ticket,
+            })),
+          PagerOptions: {
+            ...action.payload.paginationModelOptions,
+            currentPage: action.payload.newPage,
+          },
+          titleSearchText: action.payload.searchTitle,
         };
       default:
         return state;

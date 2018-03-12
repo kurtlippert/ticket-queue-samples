@@ -6,7 +6,7 @@ import {
   ticketQueue, fetchInitialTicketsEpic, fetchFirstPageTicketsEpic,
   fetchPreviousPageTicketsEpic, fetchFirstEllipsisPageTicketsEpic,
   fetchSelectedPageTicketsEpic, fetchSecondEllipsisPageTicketsEpic,
-  fetchNextPageTicketsEpic, fetchLastPageTicketsEpic,
+  fetchNextPageTicketsEpic, fetchLastPageTicketsEpic, fetchTicketsWithFilterEpic,
 } from './TicketQueue/Update';
 import { Ticket, TicketQueue } from './TicketQueue/Model';
 import { Action } from './TicketQueue/Actions';
@@ -31,4 +31,5 @@ export const rootEpic:
     fetchSecondEllipsisPageTicketsEpic,
     fetchNextPageTicketsEpic,
     fetchLastPageTicketsEpic,
+    fetchTicketsWithFilterEpic,
   );
