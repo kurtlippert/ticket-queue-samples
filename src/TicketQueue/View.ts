@@ -49,6 +49,7 @@ const ticketQueue: React.SFC<TicketQueueProps> = ({ queue, dispatch }) =>
   div({},
     r(DetailsList as React.ComponentClass<IDetailsListProps>, {
       items: queue.Tickets,
+      className: style({ overflowX: queue.Tickets.length === 0 ? 'hidden' : 'auto' }),
       selectionMode: 0,
       columns: [
         {
@@ -124,6 +125,8 @@ const ticketQueue: React.SFC<TicketQueueProps> = ({ queue, dispatch }) =>
           key: 'Status',
           maxWidth: 300,
           minWidth: 110,
+          onRender: (item: Ticket) =>
+            span({ className: style({ cursor: 'default' })}, item.Status),
           name:
             queue.isFilteringStatus
             ? r(Dropdown as React.ComponentClass<IDropdownProps>, {
@@ -179,6 +182,8 @@ const ticketQueue: React.SFC<TicketQueueProps> = ({ queue, dispatch }) =>
           key: 'Time_Open',
           maxWidth: 300,
           minWidth: 100,
+          onRender: (item: Ticket) =>
+            span({ className: style({ cursor: 'default' })}, item.Time_Open),
           name: 'Time Open',
         },
         {
@@ -194,6 +199,8 @@ const ticketQueue: React.SFC<TicketQueueProps> = ({ queue, dispatch }) =>
           key: 'Assigned_To',
           maxWidth: 300,
           minWidth: 100,
+          onRender: (item: Ticket) =>
+            span({ className: style({ cursor: 'default' })}, item.Assigned_To),
           name:
             div({},
               span({}, 'Assigned To '),
