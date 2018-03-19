@@ -7,13 +7,14 @@ import {
   fetchPreviousPageTicketsEpic, fetchFirstEllipsisPageTicketsEpic,
   fetchSelectedPageTicketsEpic, fetchSecondEllipsisPageTicketsEpic,
   fetchNextPageTicketsEpic, fetchLastPageTicketsEpic, fetchTicketsWithFilterEpic,
+  fetchTicketsWithStatusFilterEpic,
 } from './TicketQueue/Update';
 import { Ticket, TicketQueue } from './TicketQueue/Model';
 import { Action } from './TicketQueue/Actions';
 
 export interface EpicDependencies {
   getJSON: (url: string) => Observable<{ tickets: Ticket[] }>;
-  getPageCount: (url: string) => Observable<{ pageCount: number, tickets: Ticket[] }>;
+  getPageCount: (url: string) => Observable<{ pageCount: number, tickets: Ticket[], statuses: string[] }>;
 }
 
 export const rootReducer = combineReducers<State>({
@@ -32,4 +33,5 @@ export const rootEpic:
     fetchNextPageTicketsEpic,
     fetchLastPageTicketsEpic,
     fetchTicketsWithFilterEpic,
+    fetchTicketsWithStatusFilterEpic,
   );

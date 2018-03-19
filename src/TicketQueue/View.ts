@@ -1,5 +1,3 @@
-// tslint:disable:no-console
-
 // react
 import * as React from 'react';
 
@@ -7,18 +5,30 @@ import * as React from 'react';
 import { connect } from 'react-redux';
 
 // misc
-import { TicketQueue } from './Model';
+import { TicketQueue, Ticket } from './Model';
 import { State } from '../Model';
-// import { DetailsList, IDetailsListProps, buildColumns, IObjectWithKey, IColumn } from 'office-ui-fabric-react';
-// import { DetailsList, IDetailsListProps, IColumn, buildColumns } from 'office-ui-fabric-react';
-// import { DetailsList, IDetailsListProps, buildColumns } from 'office-ui-fabric-react';
-// import { DetailsList, IDetailsListProps, IColumn, ActionButton, IButtonProps, IIconProps, SearchBox, ISearchBox } from 'office-ui-fabric-react';
-import { DetailsList, IDetailsListProps, IColumn, ActionButton, IButtonProps, IIconProps, TextField, ITextFieldProps, ITextField } from 'office-ui-fabric-react';
+import {
+  DetailsList,
+  IDetailsListProps,
+  IColumn,
+  ActionButton,
+  IButtonProps,
+  IIconProps,
+  TextField,
+  ITextFieldProps,
+  ITextField,
+  Dropdown,
+  IDropdownProps,
+  IDropdown,
+  IDropdownOption,
+  Icon,
+  TooltipHost,
+  ITooltipHostProps} from 'office-ui-fabric-react';
 import Pager from '../Pager';
 import { style } from 'typestyle';
 import { initializeIcons, IconNames } from 'office-ui-fabric-react/lib/Icons';
 import { Dispatch } from 'redux';
-import { toggleTitlesSearch, titleSearch, Action } from './Actions';
+import { toggleTitlesSearch, titleSearch, Action, toggleStatusFilter, statusFilter } from './Actions';
 import { debounce } from 'lodash';
 
 initializeIcons();
@@ -34,8 +44,6 @@ interface ColumnExtended extends IColumn {
 
 const { div, span } = React.DOM;
 const r = React.createElement;
-
-// const a = render(div({}, 'some div'), )
 
 const ticketQueue: React.SFC<TicketQueueProps> = ({ queue, dispatch }) =>
   div({},
@@ -55,12 +63,14 @@ const ticketQueue: React.SFC<TicketQueueProps> = ({ queue, dispatch }) =>
           isSortedDescending: false,
           key: 'Title',
           maxWidth: 300,
-          minWidth: 100,
+          minWidth: 110,
+          onRender: (item: Ticket) =>
+            span({ className: style({ cursor: 'default' }), title: item.Title }, item.Title),
           name:
             queue.isSearchingTitles
             ? r(TextField as React.ComponentClass<ITextFieldProps>, {
                 placeholder: 'Search ticket titles',
-                value: queue.titleSearchText,
+                defaultValue: queue.titleSearchText,
                 componentRef: (component: ITextField): void | {} => component ? component.focus() : {},
                 onFocus: (e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>): void =>
                     (e.target as HTMLInputElement).select(),
@@ -73,11 +83,25 @@ const ticketQueue: React.SFC<TicketQueueProps> = ({ queue, dispatch }) =>
                 onBlur: (): Action => dispatch(toggleTitlesSearch(false)),
                 onChanged: debounce((newValue: string): Action => dispatch(titleSearch(newValue)), 500),
               } as ITextFieldProps)
-            : div({},
-                span({}, `Title${queue.titleSearchText === '' ? '' : ` ("${queue.titleSearchText}")`}`),
+            : div({
+                className: style({
+                  display: 'flex',
+                  flexFlow: 'row nowrap',
+                  maxWidth: '100%',
+                })},
+                span({}, `Title`),
+                span({
+                  className: style({
+                    flex: 1,
+                    whiteSpace: 'pre',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                  }),
+                  title: queue.titleSearchText },
+                  `${queue.titleSearchText === '' ? '' : ` ("${queue.titleSearchText}")`}`),
                 r(ActionButton as React.ComponentClass<IButtonProps>, {
                   iconProps: { iconName: IconNames.Zoom } as IIconProps,
-                  className: style({ position: 'absolute', top: '-4px', right: 0 }),
+                  className: style({ whiteSpace: 'nowrap', top: '-4px', marginLeft: 'auto' }),
                   text: 'Search',
                   styles: {
                     label: style({ fontSize: '12px' }),
@@ -99,9 +123,49 @@ const ticketQueue: React.SFC<TicketQueueProps> = ({ queue, dispatch }) =>
           isSortedDescending: false,
           key: 'Status',
           maxWidth: 300,
-          minWidth: 50,
-          name: 'Status',
-        },
+          minWidth: 110,
+          name:
+            queue.isFilteringStatus
+            ? r(Dropdown as React.ComponentClass<IDropdownProps>, {
+                componentRef: (component: IDropdown): void | {} => component ? component.focus(true) : {},
+                placeHolder: 'Select status',
+                options: [
+                  { key: '', text: '' },
+                  ...queue.statusFilterOptions.map((filterOptions) =>
+                      ({ key: filterOptions.toLowerCase().replace(/\s/g, '_'), text: filterOptions })),
+                ],
+                onChanged: (option: IDropdownOption): Action => dispatch(statusFilter(option.text)),
+                onBlur: (): Action => dispatch(toggleStatusFilter(false)),
+                onDismiss: (): Action => dispatch(toggleStatusFilter(false)),
+              })
+            : div({
+                className: style({
+                  display: 'flex',
+                  flexFlow: 'row nowrap',
+                  maxWidth: '100%',
+                })},
+                span({}, 'Status'),
+                span({
+                  className: style({
+                    flex: 1,
+                    whiteSpace: 'pre',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                  }),
+                  title: queue.statusFilterText },
+                  `${queue.statusFilterText === '' ? '' : ` ("${queue.statusFilterText}")`}`),
+                r(ActionButton as React.ComponentClass<IButtonProps>, {
+                  iconProps: { iconName: IconNames.Filter } as IIconProps,
+                  className: style({ whiteSpace: 'nowrap', top: '-4px', marginLeft: 'auto' }),
+                  text: 'Filter',
+                  styles: {
+                    label: style({ fontSize: '12px' }),
+                    icon: style({ fontSize: '12px' }),
+                  },
+                  onClick: () => dispatch(toggleStatusFilter(true)),
+                }),
+              ),
+        } as ColumnExtended,
         {
           columnActionsMode: 1,
           fieldName: 'Time_Open',
@@ -130,10 +194,55 @@ const ticketQueue: React.SFC<TicketQueueProps> = ({ queue, dispatch }) =>
           key: 'Assigned_To',
           maxWidth: 300,
           minWidth: 100,
-          name: 'Assigned To',
+          name:
+            div({},
+              span({}, 'Assigned To '),
+              r(TooltipHost as React.ComponentClass<ITooltipHostProps>, {
+                  className: style({ marginLeft: '5px' }),
+                  content:
+                  `NOTE that if \'Angela Holland\' is assigned, check the CC List column.
+                   More than likely, that will the party working the ticket.`,
+                  calloutProps: { gapSpace: 15 },
+                },
+                span({ className: style({ verticalAlign: 'middle' }) },
+                  r(Icon as React.ComponentClass<IIconProps>, {
+                      className: style({
+                        top: '1px',
+                        position: 'absolute',
+                        fontSize: '14px',
+                        color: 'rgb(16, 110, 190)',
+                      }),
+                      iconName: IconNames.Info,
+                    },
+                  ),
+                ),
+              ),
+            ),
+        } as ColumnExtended,
+        {
+          columnActionsMode: 1,
+          fieldName: 'CC_List',
+          isCollapsable: false,
+          isGrouped: false,
+          isMultiline: false,
+          isResizable: true,
+          isRowHeader: false,
+          isSorted: false,
+          isSortedDescending: false,
+          key: 'CC_List',
+          maxWidth: 300,
+          minWidth: 100,
+          onRender: (item: Ticket) =>
+            span({ className: style({ cursor: 'default' }), title: item.CC_List }, item.CC_List),
+          name: 'CC List',
         },
       ],
     }),
+    queue.Tickets.length === 0 && queue.titleSearchText !== ''
+      ? span({ className: style({ display: 'inherit', textAlign: 'center' }) },
+          `No ticket titles matching "${queue.titleSearchText}"`,
+        )
+      : '',
     r(Pager),
   );
 

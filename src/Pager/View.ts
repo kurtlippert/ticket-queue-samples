@@ -131,7 +131,9 @@ const { div } = React.DOM;
 
 export const Pager: React.SFC<PagerProps> = ({ paginationModelOptions, dispatch }) => {
   return div({ className: flexContainer },
-    getPaginationModel(paginationModelOptions).map((paginationModelItem: PaginationModelItem) =>
-      paginationModelItemToPage(paginationModelItem, dispatch)),
+    paginationModelOptions.totalPages > 1
+      ? getPaginationModel(paginationModelOptions).map((paginationModelItem: PaginationModelItem) =>
+          paginationModelItemToPage(paginationModelItem, dispatch))
+      : '',
   );
 };

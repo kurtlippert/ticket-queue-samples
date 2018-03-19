@@ -17,11 +17,14 @@ import {
   InitialAction,
   TitlesSearchAction,
   titleSearchFulfilled,
+  initialTicketsFulfilled,
+  statusFilterFulfilled,
 } from './Actions';
 import { initialTicketQueue, TicketQueue } from './Model';
 import { State } from '../Model';
 import { EpicDependencies } from '../Update';
 import { SelectedPageAction } from '../Pager/Actions';
+import { StatusFilterAction } from '../../lib/TicketQueue/Actions';
 
 const getActivePage = (pager: PaginationModel) => {
   const { value = -1 } = pager.find((page) => page.isActive) || {};
@@ -49,8 +52,18 @@ const getPageWithKey = (pager: PaginationModel, key: ItemKeys | number) => {
   return value;
 };
 
-const ticketEndpoint = (page: number = 1, getPageCount: boolean = false, titleFilter: string = '') =>
-  `https://localhost:3003/tickets?limit=10&page=${page}&getPageCount=${getPageCount}&titleFilter=${titleFilter}`;
+const ticketEndpoint =
+  (page: number = 1,
+   getPageCount: boolean = false,
+   titleFilter: string = '',
+   statusFilter: string = '') =>
+    `https://localhost:3003/tickets
+      ?limit=10
+      &page=${page}
+      ${getPageCount ? '&getPageCount' : ''}
+      &titleFilter=${titleFilter.replace(/\'/g, '').replace(/\s/g, '+')}
+      &statusFilter=${statusFilter.replace(/\s/g, '+')}`
+    .replace(/\s/g, '');
 
 export const fetchInitialTicketsEpic:
   Epic<Action, Store<State>, EpicDependencies> =
@@ -59,7 +72,7 @@ export const fetchInitialTicketsEpic:
       .mergeMap((action) =>
         getPageCount(ticketEndpoint(1, true))
           .map((response) =>
-            pageFulfilled({
+            initialTicketsFulfilled({
               tickets: response.tickets,
               paginationModelOptions: {
                 ...(action as InitialAction).payload,
@@ -67,6 +80,7 @@ export const fetchInitialTicketsEpic:
                 totalPages: response.pageCount,
               },
               newPage: 1,
+              statuses: response.statuses,
             }),
           ),
       );
@@ -75,29 +89,33 @@ export const fetchFirstPageTicketsEpic:
   Epic<Action, Store<State>, EpicDependencies> =
   (action$, state, { getJSON }) =>
     action$.ofType('FIRST_PAGE')
-      .mergeMap(() =>
-        getJSON(ticketEndpoint())
+      .mergeMap(() => {
+        const queue = (state.getState() as any as State).ticketQueue;
+        const paginationModelOptions = queue.PagerOptions;
+        const titleSearchText = queue.titleSearchText;
+        const statusFilterText = queue.statusFilterText;
+        return getJSON(ticketEndpoint(1, false, titleSearchText, statusFilterText))
           .map((response) =>
             pageFulfilled({
               tickets: response.tickets,
-              paginationModelOptions: {
-                ...(state.getState() as any).ticketQueue.PagerOptions,
-              },
+              paginationModelOptions,
               newPage: 1,
             }),
-        ),
-    );
+          );
+      });
 
 export const fetchPreviousPageTicketsEpic:
   Epic<Action, Store<State>, EpicDependencies> =
   (action$, state, { getJSON }) =>
     action$.ofType('PREVIOUS_PAGE')
       .mergeMap(() => {
-        const queue = (state.getState() as any).ticketQueue;
+        const queue = (state.getState() as any as State).ticketQueue;
         const paginationModelOptions = queue.PagerOptions;
         const pager = getPaginationModel(paginationModelOptions);
         const previousPage = getPreviousPage(pager);
-        return getJSON(ticketEndpoint(previousPage))
+        const titleSearchText = queue.titleSearchText;
+        const statusFilterText = queue.statusFilterText;
+        return getJSON(ticketEndpoint(previousPage, false, titleSearchText, statusFilterText))
           .map((response) =>
             pageFulfilled({
               tickets: response.tickets,
@@ -112,11 +130,13 @@ export const fetchFirstEllipsisPageTicketsEpic:
   (action$, state, { getJSON }) =>
     action$.ofType('FIRST_ELLIPSIS')
       .mergeMap(() => {
-        const queue = (state.getState() as any).ticketQueue;
+        const queue = (state.getState() as any as State).ticketQueue;
         const paginationModelOptions = queue.PagerOptions;
         const pager = getPaginationModel(paginationModelOptions);
         const firstEllipsisPage = getPageWithKey(pager, ITEM_KEYS.FIRST_ELLIPSIS);
-        return getJSON(ticketEndpoint(firstEllipsisPage))
+        const titleSearchText = queue.titleSearchText;
+        const statusFilterText = queue.statusFilterText;
+        return getJSON(ticketEndpoint(firstEllipsisPage, false, titleSearchText, statusFilterText))
           .map((response) =>
             pageFulfilled({
               tickets: response.tickets,
@@ -131,9 +151,12 @@ export const fetchSelectedPageTicketsEpic:
   (action$, state, { getJSON }) =>
     action$.ofType('SELECTED_PAGE')
       .mergeMap((action) => {
-        const paginationModelOptions = (state.getState() as any).ticketQueue.PagerOptions;
+        const queue = (state.getState() as any as State).ticketQueue;
+        const paginationModelOptions = queue.PagerOptions;
         const selectedPage = (action as SelectedPageAction).payload;
-        return getJSON(ticketEndpoint(selectedPage))
+        const titleSearchText = queue.titleSearchText;
+        const statusFilterText = queue.statusFilterText;
+        return getJSON(ticketEndpoint(selectedPage, false, titleSearchText, statusFilterText))
           .map((response) =>
             pageFulfilled({
               tickets: response.tickets,
@@ -148,11 +171,13 @@ export const fetchSecondEllipsisPageTicketsEpic:
   (action$, state, { getJSON }) =>
     action$.ofType('SECOND_ELLIPSIS')
       .mergeMap(() => {
-        const queue = (state.getState() as any).ticketQueue;
+        const queue = (state.getState() as any as State).ticketQueue;
         const paginationModelOptions = queue.PagerOptions;
         const pager = getPaginationModel(paginationModelOptions);
         const secondEllipsisPage = getPageWithKey(pager, ITEM_KEYS.SECOND_ELLIPSIS);
-        return getJSON(ticketEndpoint(secondEllipsisPage))
+        const titleSearchText = queue.titleSearchText;
+        const statusFilterText = queue.statusFilterText;
+        return getJSON(ticketEndpoint(secondEllipsisPage, false, titleSearchText, statusFilterText))
           .map((response) =>
             pageFulfilled({
               tickets: response.tickets,
@@ -167,11 +192,13 @@ export const fetchNextPageTicketsEpic:
   (action$, state, { getJSON }) =>
     action$.ofType('NEXT_PAGE')
       .mergeMap(() => {
-        const queue = (state.getState() as any).ticketQueue;
+        const queue = (state.getState() as any as State).ticketQueue;
         const paginationModelOptions = queue.PagerOptions;
         const pager = getPaginationModel(paginationModelOptions);
         const nextPage = getNextPage(pager, paginationModelOptions.totalPages);
-        return getJSON(ticketEndpoint(nextPage))
+        const titleSearchText = queue.titleSearchText;
+        const statusFilterText = queue.statusFilterText;
+        return getJSON(ticketEndpoint(nextPage, false, titleSearchText, statusFilterText))
           .map((response) =>
             pageFulfilled({
               tickets: response.tickets,
@@ -186,10 +213,12 @@ export const fetchLastPageTicketsEpic:
   (action$, state, { getJSON }) =>
     action$.ofType('LAST_PAGE')
       .mergeMap(() => {
-        const queue = (state.getState() as any).ticketQueue;
+        const queue = (state.getState() as any as State).ticketQueue;
         const paginationModelOptions = queue.PagerOptions;
         const lastPage = paginationModelOptions.totalPages;
-        return getJSON(ticketEndpoint(lastPage))
+        const titleSearchText = queue.titleSearchText;
+        const statusFilterText = queue.statusFilterText;
+        return getJSON(ticketEndpoint(lastPage, false, titleSearchText, statusFilterText))
           .map((response) =>
             pageFulfilled({
               tickets: response.tickets,
@@ -204,18 +233,43 @@ export const fetchTicketsWithFilterEpic:
   (action$, state, { getPageCount }) =>
     action$.ofType('TITLES_SEARCH')
       .mergeMap((action) => {
+        const queue = (state.getState() as any as State).ticketQueue;
+        const paginationModelOptions = queue.PagerOptions;
         const searchTitle = (action as TitlesSearchAction).payload;
-        return getPageCount(ticketEndpoint(1, true, searchTitle))
+        const statusFilterText = queue.statusFilterText;
+        return getPageCount(ticketEndpoint(1, true, searchTitle, statusFilterText))
           .map((response) =>
             titleSearchFulfilled({
               tickets: response.tickets,
               paginationModelOptions: {
-                ...(state.getState() as any).ticketQueue.PagerOptions,
-                currentPage: 1,
+                ...paginationModelOptions,
                 totalPages: response.pageCount,
               },
-              newPage: 1,
+              newPage: response.pageCount === 0 ? 0 : 1,
               searchTitle,
+            }),
+          );
+      });
+
+export const fetchTicketsWithStatusFilterEpic:
+  Epic<Action, Store<State>, EpicDependencies> =
+  (action$, state, { getPageCount }) =>
+    action$.ofType('STATUS_FILTER')
+      .mergeMap((action) => {
+        const queue = (state.getState() as any as State).ticketQueue;
+        const titleSearchText = queue.titleSearchText;
+        const statusFilter = (action as StatusFilterAction).payload;
+        return getPageCount(
+          ticketEndpoint(1, true, titleSearchText, statusFilter))
+          .map((response) =>
+            statusFilterFulfilled({
+              tickets: response.tickets,
+              paginationModelOptions: {
+                ...queue.PagerOptions,
+                totalPages: response.pageCount,
+              },
+              newPage: response.pageCount === 0 ? 0 : 1,
+              statusFilter,
             }),
           );
       });
@@ -223,13 +277,20 @@ export const fetchTicketsWithFilterEpic:
 export const ticketQueue =
   (state: TicketQueue = initialTicketQueue, action: Action): TicketQueue => {
     switch (action.type) {
+      case 'INITIAL_TICKETS_FULFILLED':
+        return {
+          ...state,
+          Tickets: action.payload.tickets,
+          PagerOptions: {
+            ...action.payload.paginationModelOptions,
+            currentPage: action.payload.newPage,
+          },
+          statusFilterOptions: action.payload.statuses,
+        };
       case 'PAGE_FULFILLED':
         return {
           ...state,
-          Tickets:
-            action.payload.tickets.map((ticket) => ({
-              ...ticket,
-            })),
+          Tickets: action.payload.tickets,
           PagerOptions: {
             ...action.payload.paginationModelOptions,
             currentPage: action.payload.newPage,
@@ -243,15 +304,27 @@ export const ticketQueue =
       case 'TITLES_SEARCH_FULFILLED':
         return {
           ...state,
-          Tickets:
-            action.payload.tickets.map((ticket) => ({
-              ...ticket,
-            })),
+          Tickets: action.payload.tickets,
           PagerOptions: {
             ...action.payload.paginationModelOptions,
             currentPage: action.payload.newPage,
           },
           titleSearchText: action.payload.searchTitle,
+        };
+      case 'TOGGLE_STATUS_FILTER':
+        return {
+          ...state,
+          isFilteringStatus: action.payload,
+        };
+      case 'STATUS_FILTER_FULFILLED':
+        return {
+          ...state,
+          Tickets: action.payload.tickets,
+          PagerOptions: {
+            ...action.payload.paginationModelOptions,
+            currentPage: action.payload.newPage,
+          },
+          statusFilterText: action.payload.statusFilter,
         };
       default:
         return state;

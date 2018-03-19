@@ -15,7 +15,10 @@ export interface TicketQueue {
   Tickets: Ticket[];
   PagerOptions: PaginationModelOptions;
   isSearchingTitles: boolean;
+  isFilteringStatus: boolean;
   titleSearchText: string;
+  statusFilterText: string;
+  statusFilterOptions: string[];
 }
 
 export const initialTicketQueue: TicketQueue = {
@@ -25,5 +28,8 @@ export const initialTicketQueue: TicketQueue = {
     totalPages: 10,
   },
   isSearchingTitles: false,
+  isFilteringStatus: false,
   titleSearchText: '',
+  statusFilterText: '',
+  statusFilterOptions: [],
 };
