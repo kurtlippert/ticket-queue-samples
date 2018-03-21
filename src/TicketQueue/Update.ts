@@ -57,7 +57,7 @@ const ticketEndpoint =
    getPageCount: boolean = false,
    titleFilter: string = '',
    statusFilter: string = '') =>
-    `https://localhost:3003/tickets
+    `${process.env.API_ENDPOINT || 'https://kace.api.johnstoncc.edu'}/tickets
       ?limit=10
       &page=${page}
       ${getPageCount ? '&getPageCount' : ''}

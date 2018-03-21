@@ -1,6 +1,7 @@
 import * as express from 'express';
 import * as https from 'https';
 import * as fs from 'fs';
+import * as helmet from 'helmet';
 
 import * as mysql from 'mysql';
 
@@ -11,11 +12,13 @@ const options = {
 
 const app = express();
 
+// https://github.com/helmetjs/helmet#how-it-works
+app.use(helmet());
+
 // so our server trusts our app
 app.use((_: express.Request, res: express.Response, next) => {
   res.setHeader('Access-Control-Allow-Origin', [
-    'https://localhost:4321',
-    // 'https://johnstoncc.sharepoint.com',
+    `${process.env.ACCESS_ORIGIN || 'https://localhost:4321'}`,
   ]);
   res.setHeader('Access-Control-Allow-Headers', [
     'Authorization',
@@ -111,4 +114,4 @@ app.get('/tickets', (req, res) => {
 });
 
 // tslint:disable-next-line:no-console
-https.createServer(options, app).listen(3003, () => console.log('listening on port 3003!'));
+https.createServer(options, app).listen(8080, () => console.log('listening on port 8080!'));
